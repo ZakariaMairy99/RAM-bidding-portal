@@ -2,17 +2,31 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react'
+import { isSalesforceConfigured, startSalesforceLogin } from '../services/salesforceAuth'
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [ssoLoading, setSsoLoading] = useState(false)
+  const [ssoError, setSsoError] = useState('')
   const navigate = useNavigate()
 
   const handleSubmit = (e) => {
     e.preventDefault()
     // En attendant la Connected App Salesforce, on redirige directement
     navigate('/portal')
+  }
+
+  const handleSalesforceSso = async () => {
+    try {
+      setSsoError('')
+      setSsoLoading(true)
+      await startSalesforceLogin()
+    } catch (error) {
+      setSsoLoading(false)
+      setSsoError(error.message || 'Impossible de lancer la connexion Salesforce.')
+    }
   }
 
   return (
@@ -181,12 +195,25 @@ export default function Login() {
           </div>
 
           {/* SSO Salesforce */}
-          <button className="w-full py-3.5 border border-gray-200 rounded-lg flex items-center justify-center gap-3 hover:bg-bg transition-colors text-sm font-medium text-ram-secondary">
+          <button
+            type="button"
+            onClick={handleSalesforceSso}
+            disabled={!isSalesforceConfigured() || ssoLoading}
+            className="w-full py-3.5 border border-gray-200 rounded-lg flex items-center justify-center gap-3 hover:bg-bg transition-colors text-sm font-medium text-ram-secondary disabled:opacity-60 disabled:cursor-not-allowed"
+          >
             <div className="w-5 h-5 rounded bg-[#00A1E0] flex items-center justify-center text-white text-[10px] font-bold">
               SF
             </div>
-            Continuer avec Salesforce SSO
+            {ssoLoading ? 'Redirection vers Salesforce...' : 'Continuer avec Salesforce SSO'}
           </button>
+          {ssoError ? (
+            <p className="mt-3 text-xs text-red-600">{ssoError}</p>
+          ) : null}
+          {!isSalesforceConfigured() ? (
+            <p className="mt-3 text-xs text-ink-muted">
+              Configuration manquante: ajoute `VITE_SF_CLIENT_ID` et `VITE_SF_LOGIN_URL`.
+            </p>
+          ) : null}
 
           {/* Bottom link */}
           <div className="mt-10 text-center text-sm text-ink-muted">
